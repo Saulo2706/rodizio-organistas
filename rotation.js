@@ -56,25 +56,39 @@ function generateRotation(church, organists, startDateStr, endDateStr, perServic
         pool.forEach(p => p.monthlyCount = 0);
 
         // Para cada culto do mês
-        monthServices.forEach((serviceDate, index) => {
+        monthServices.forEach((serviceDate, cultoIndex) => {
             const { date, weekday } = serviceDate;
 
             // Pegar organistas que tocaram no último culto
             const lastService = schedule.length > 0 ? schedule[schedule.length - 1] : null;
             const lastOrganistIds = lastService ? lastService.chosen.map(c => c.id) : [];
 
+            // Contar quantas organistas ainda não tocaram neste mês
+            const notPlayedYet = pool.filter(p => p.monthlyCount === 0).length;
+            const cultosRestantes = monthServices.length - cultoIndex;
+
             let allCandidates = pool.slice();
 
             // Ordenar por prioridade
             allCandidates.sort((a, b) => {
-                // Critério 1: PRIORIDADE - quem ainda não tocou neste mês
+                // Critério 0: Se ainda há organistas que não tocaram E há cultos suficientes,
+                // BLOQUEAR totalmente quem já tocou (não apenas priorizar)
+                if (notPlayedYet > 0 && cultosRestantes >= notPlayedYet) {
+                    const aAlreadyPlayed = a.monthlyCount > 0 ? 1000 : 0;
+                    const bAlreadyPlayed = b.monthlyCount > 0 ? 1000 : 0;
+                    if (aAlreadyPlayed !== bAlreadyPlayed) {
+                        return aAlreadyPlayed - bAlreadyPlayed;
+                    }
+                }
+
+                // Critério 1: Quem tocou menos no mês
                 if (a.monthlyCount !== b.monthlyCount) {
                     return a.monthlyCount - b.monthlyCount;
                 }
 
                 // Critério 2: Evitar consecutivos
-                const aWasLast = lastOrganistIds.includes(a.id) ? 1 : 0;
-                const bWasLast = lastOrganistIds.includes(b.id) ? 1 : 0;
+                const aWasLast = lastOrganistIds.includes(a.id) ? 100 : 0;
+                const bWasLast = lastOrganistIds.includes(b.id) ? 100 : 0;
                 if (aWasLast !== bWasLast) {
                     return aWasLast - bWasLast;
                 }
