@@ -44,6 +44,7 @@ function saveState() {
 }
 
 loadState();
+console.log('Estado carregado:', state); // Debug
 updateChurchSelects();
 renderChurchesList();
 renderOrganistsList();
