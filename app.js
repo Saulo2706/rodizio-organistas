@@ -188,31 +188,6 @@ function setupEventListeners() {
 // === VARIÁVEIS GLOBAIS ===
 let lastSchedule = null;
 let lastExportMeta = null;
-    const name = el('churchName').value.trim();
-    const color = el('churchColor').value;
-    const days = [...el('churchDays').querySelectorAll('input:checked')].map(i => Number(i.value));
-    
-    if (!name) {
-        showAlert('danger', 'Informe o nome da igreja');
-        return;
-    }
-    if (days.length === 0) {
-        showAlert('warning', 'Selecione pelo menos um dia de culto');
-        return;
-    }
-    
-    const id = 'church_' + Date.now();
-    state.churches.push({ id, name, days, color });
-    saveState();
-    
-    el('churchName').value = '';
-    el('churchColor').value = '#667eea';
-    [...el('churchDays').querySelectorAll('input')].forEach(i => i.checked = false);
-    
-    updateChurchSelects();
-    renderChurchesList();
-    showAlert('success', `Igreja "${name}" adicionada com sucesso!`);
-});
 
 function renderChurchesList() {
     const div = el('churchesList');
@@ -281,36 +256,6 @@ function updateChurchSelects() {
     selectGen.innerHTML = '<option value="">Selecione uma igreja</option>' + 
         state.churches.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
 }
-
-// === ORGANISTAS ===
-el('addOrganist').addEventListener('click', () => {
-    const name = el('organistName').value.trim();
-    const churchIds = [...el('organistChurches').selectedOptions].map(opt => opt.value);
-    const days = [...el('organistDays').querySelectorAll('input:checked')].map(i => Number(i.value));
-    
-    if (!name) {
-        showAlert('danger', 'Informe o nome da organista');
-        return;
-    }
-    if (churchIds.length === 0) {
-        showAlert('warning', 'Selecione pelo menos uma igreja');
-        return;
-    }
-    if (days.length === 0) {
-        showAlert('warning', 'Selecione pelo menos um dia de preferência');
-        return;
-    }
-    
-    const id = 'org_' + Date.now();
-    state.organists.push({ id, name, churchIds, days, playCount: 0 });
-    saveState();
-    
-    el('organistName').value = '';
-    [...el('organistDays').querySelectorAll('input')].forEach(i => i.checked = false);
-    
-    renderOrganistsList();
-    showAlert('success', `Organista "${name}" adicionada com sucesso!`);
-});
 
 function renderOrganistsList() {
     const div = el('organistsList');
