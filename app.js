@@ -23,9 +23,6 @@ function createDayCheckboxes(containerId) {
     }
 }
 
-createDayCheckboxes('churchDays');
-createDayCheckboxes('organistDays');
-
 // localStorage
 function loadState() {
     try {
@@ -43,14 +40,154 @@ function saveState() {
     localStorage.setItem('rota_state_v2', JSON.stringify(state));
 }
 
-loadState();
-console.log('Estado carregado:', state); // Debug
-updateChurchSelects();
-renderChurchesList();
-renderOrganistsList();
+// Inicializar quando o DOM estiver pronto
+document.addEventListener('DOMContentLoaded', function() {
+    createDayCheckboxes('churchDays');
+    createDayCheckboxes('organistDays');
+    
+    loadState();
+    console.log('Estado carregado:', state); // Debug
+    
+    updateChurchSelects();
+    renderChurchesList();
+    renderOrganistsList();
+    
+    setupEventListeners();
+});
 
-// === IGREJAS ===
-el('saveChurch').addEventListener('click', () => {
+// Configurar event listeners
+function setupEventListeners() {
+    // === IGREJAS ===
+    el('saveChurch').addEventListener('click', () => {
+        const name = el('churchName').value.trim();
+        const color = el('churchColor').value;
+        const days = [...el('churchDays').querySelectorAll('input:checked')].map(i => Number(i.value));
+        
+        if (!name) {
+            showAlert('danger', 'Informe o nome da igreja');
+            return;
+        }
+        if (days.length === 0) {
+            showAlert('warning', 'Selecione pelo menos um dia de culto');
+            return;
+        }
+        
+        const id = 'church_' + Date.now();
+        state.churches.push({ id, name, days, color });
+        saveState();
+        
+        el('churchName').value = '';
+        el('churchColor').value = '#667eea';
+        [...el('churchDays').querySelectorAll('input')].forEach(i => i.checked = false);
+        
+        updateChurchSelects();
+        renderChurchesList();
+        showAlert('success', `Igreja "${name}" adicionada com sucesso!`);
+    });
+
+    // === ORGANISTAS ===
+    el('addOrganist').addEventListener('click', () => {
+        const name = el('organistName').value.trim();
+        const churchIds = [...el('organistChurches').selectedOptions].map(opt => opt.value);
+        const days = [...el('organistDays').querySelectorAll('input:checked')].map(i => Number(i.value));
+        
+        if (!name) {
+            showAlert('danger', 'Informe o nome da organista');
+            return;
+        }
+        if (churchIds.length === 0) {
+            showAlert('warning', 'Selecione pelo menos uma igreja');
+            return;
+        }
+        if (days.length === 0) {
+            showAlert('warning', 'Selecione pelo menos um dia de preferência');
+            return;
+        }
+        
+        const id = 'org_' + Date.now();
+        state.organists.push({ id, name, churchIds, days, playCount: 0 });
+        saveState();
+        
+        el('organistName').value = '';
+        [...el('organistDays').querySelectorAll('input')].forEach(i => i.checked = false);
+        
+        renderOrganistsList();
+        showAlert('success', `Organista "${name}" adicionada com sucesso!`);
+    });
+
+    // === GERAR RODÍZIO ===
+    el('generate').addEventListener('click', () => {
+        const churchId = el('selectedChurch').value;
+        const start = el('startDate').value;
+        const end = el('endDate').value;
+        const perService = Number(el('perService').value) || 1;
+        
+        if (!churchId) {
+            showAlert('danger', 'Selecione uma igreja');
+            return;
+        }
+        if (!start || !end) {
+            showAlert('danger', 'Informe o período inicial e final');
+            return;
+        }
+        
+        const church = state.churches.find(c => c.id === churchId);
+        const churchOrganists = state.organists.filter(o => o.churchIds && o.churchIds.includes(churchId));
+        
+        if (churchOrganists.length === 0) {
+            showAlert('warning', 'Não há organistas vinculadas a esta igreja');
+            return;
+        }
+        
+        try {
+            const res = generateRotation(church, churchOrganists, start, end, perService);
+            
+            // Atualizar contadores
+            res.updatedCounts.forEach(u => {
+                const org = state.organists.find(o => o.id === u.id);
+                if (org) org.playCount = u.playCount;
+            });
+            
+            saveState();
+            renderOrganistsList();
+            renderSchedule(res.schedule, church);
+            renderStats(res.stats, church);
+            
+            lastSchedule = res.schedule;
+            lastExportMeta = { 
+                church, 
+                perService, 
+                generatedAt: new Date().toISOString(),
+                stats: res.stats
+            };
+            
+            showAlert('success', 'Rodízio gerado com sucesso!');
+        } catch (e) {
+            showAlert('danger', 'Erro ao gerar rodízio: ' + e.message);
+        }
+    });
+
+    // === EXPORT ===
+    el('exportBtn').addEventListener('click', () => {
+        if (!lastSchedule) {
+            showAlert('warning', 'Gere o rodízio primeiro');
+            return;
+        }
+        exportScheduleToExcel(lastSchedule, lastExportMeta);
+    });
+
+    // === LIMPAR DADOS ===
+    el('clearData').addEventListener('click', () => {
+        if (confirm('⚠️ ATENÇÃO: Isso irá apagar TODAS as igrejas, organistas e rodízios salvos. Deseja continuar?')) {
+            localStorage.removeItem('rota_state_v2');
+            location.reload();
+        }
+    });
+}
+
+// === VARIÁVEIS GLOBAIS ===
+let lastSchedule = null;
+let lastExportMeta = null;
     const name = el('churchName').value.trim();
     const color = el('churchColor').value;
     const days = [...el('churchDays').querySelectorAll('input:checked')].map(i => Number(i.value));
@@ -225,61 +362,7 @@ function deleteOrganist(orgId) {
     showAlert('info', 'Organista removida');
 }
 
-// === GERAR RODÍZIO ===
-let lastSchedule = null;
-let lastExportMeta = null;
-
-el('generate').addEventListener('click', () => {
-    const churchId = el('selectedChurch').value;
-    const start = el('startDate').value;
-    const end = el('endDate').value;
-    const perService = Number(el('perService').value) || 1;
-    
-    if (!churchId) {
-        showAlert('danger', 'Selecione uma igreja');
-        return;
-    }
-    if (!start || !end) {
-        showAlert('danger', 'Informe o período inicial e final');
-        return;
-    }
-    
-    const church = state.churches.find(c => c.id === churchId);
-    const churchOrganists = state.organists.filter(o => o.churchIds && o.churchIds.includes(churchId));
-    
-    if (churchOrganists.length === 0) {
-        showAlert('warning', 'Não há organistas vinculadas a esta igreja');
-        return;
-    }
-    
-    try {
-        const res = generateRotation(church, churchOrganists, start, end, perService);
-        
-        // Atualizar contadores
-        res.updatedCounts.forEach(u => {
-            const org = state.organists.find(o => o.id === u.id);
-            if (org) org.playCount = u.playCount;
-        });
-        
-        saveState();
-        renderOrganistsList();
-        renderSchedule(res.schedule, church);
-        renderStats(res.stats, church);
-        
-        lastSchedule = res.schedule;
-        lastExportMeta = { 
-            church, 
-            perService, 
-            generatedAt: new Date().toISOString(),
-            stats: res.stats
-        };
-        
-        showAlert('success', 'Rodízio gerado com sucesso!');
-    } catch (e) {
-        showAlert('danger', 'Erro ao gerar rodízio: ' + e.message);
-    }
-});
-
+// === FUNÇÕES DE RENDERIZAÇÃO E HELPERS ===
 function renderStats(stats, church) {
     const area = el('statsArea');
     if (!stats) return;
@@ -357,26 +440,8 @@ function formatDate(dateStr) {
     return d.toLocaleDateString('pt-BR');
 }
 
-// === EXPORT ===
-el('exportBtn').addEventListener('click', () => {
-    if (!lastSchedule) {
-        showAlert('warning', 'Gere o rodízio primeiro');
-        return;
-    }
-    exportScheduleToExcel(lastSchedule, lastExportMeta);
-});
-
-// === LIMPAR DADOS ===
-el('clearData').addEventListener('click', () => {
-    if (confirm('⚠️ ATENÇÃO: Isso irá apagar TODAS as igrejas, organistas e rodízios salvos. Deseja continuar?')) {
-        localStorage.removeItem('rota_state_v2');
-        location.reload();
-    }
-});
-
 // === HELPER: ALERTS ===
 function showAlert(type, message) {
-    // Bootstrap toast seria melhor, mas por simplicidade usamos alert temporário
     const alertDiv = document.createElement('div');
     alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3`;
     alertDiv.style.zIndex = '9999';
