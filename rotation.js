@@ -58,8 +58,8 @@ function generateRotation(church, organists, startDateStr, endDateStr, perServic
 
         // Ordenar candidatos por critérios de justiça:
         // 0. EVITAR quem tocou no último culto (penalidade forte!)
-        // 1. Contagem neste dia da semana específico - menor primeiro (PRIORIDADE - para rotacionar entre os dias)
-        // 2. Total geral (playCount) - menor primeiro
+        // 1. Total geral (playCount) - menor primeiro (PRIORIDADE para distribuição equilibrada)
+        // 2. Contagem neste dia da semana específico - menor primeiro (para rotacionar entre os dias)
         // 3. Se disponível no dia (preferência) - sim primeiro (APENAS para desempate)
         // 4. Randomização para desempate final
         allCandidates.sort((a, b) => {
@@ -70,16 +70,16 @@ function generateRotation(church, organists, startDateStr, endDateStr, perServic
                 return aWasLast - bWasLast; // Quem tocou por último vai para o fim
             }
 
-            // Critério 1: Contagem neste dia da semana (PRIORIDADE - rotaciona entre os dias)
+            // Critério 1: Total geral (PRIORIDADE - quem tocou menos no geral)
+            if (a.playCount !== b.playCount) {
+                return a.playCount - b.playCount;
+            }
+
+            // Critério 2: Contagem neste dia da semana (para rotacionar entre os dias)
             const aWeekdayCount = a.weekdayCount[weekday] || 0;
             const bWeekdayCount = b.weekdayCount[weekday] || 0;
             if (aWeekdayCount !== bWeekdayCount) {
                 return aWeekdayCount - bWeekdayCount;
-            }
-
-            // Critério 2: Total geral
-            if (a.playCount !== b.playCount) {
-                return a.playCount - b.playCount;
             }
 
             // Critério 3: Preferência (APENAS para desempate, não elimina candidatas)
