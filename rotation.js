@@ -45,8 +45,12 @@ function generateRotation(church, organists, startDateStr, endDateStr, perServic
     }
     
     // Para cada data, alocar organistas
-    serviceDates.forEach(serviceDate => {
+    serviceDates.forEach((serviceDate, index) => {
         const { date, weekday } = serviceDate;
+        
+        // Pegar organistas que tocaram no último culto (para evitar repetição consecutiva)
+        const lastService = index > 0 ? schedule[index - 1] : null;
+        const lastOrganistIds = lastService ? lastService.chosen.map(c => c.id) : [];
         
         // Candidatos que preferem esse dia
         let preferredCandidates = pool.filter(o => o.days.includes(weekday));
@@ -57,11 +61,19 @@ function generateRotation(church, organists, startDateStr, endDateStr, perServic
             : pool.slice();
         
         // Ordenar candidatos por critérios de justiça (APENAS nos dias de culto desta igreja):
+        // 0. EVITAR quem tocou no último culto (penalidade forte!)
         // 1. Contagem neste dia da semana específico - menor primeiro (mais importante!)
         // 2. Total geral (playCount) - menor primeiro
         // 3. Se disponível no dia (preferência) - sim primeiro
         // 4. Randomização para desempate
         allCandidates.sort((a, b) => {
+            // Critério 0: Penalizar quem tocou no último culto
+            const aWasLast = lastOrganistIds.includes(a.id) ? 1000 : 0;
+            const bWasLast = lastOrganistIds.includes(b.id) ? 1000 : 0;
+            if (aWasLast !== bWasLast) {
+                return aWasLast - bWasLast; // Quem tocou por último vai para o fim
+            }
+            
             // Critério 1: Contagem neste dia da semana (PRIORIDADE)
             const aWeekdayCount = a.weekdayCount[weekday] || 0;
             const bWeekdayCount = b.weekdayCount[weekday] || 0;
@@ -89,7 +101,8 @@ function generateRotation(church, organists, startDateStr, endDateStr, perServic
         const chosen = allCandidates.slice(0, perService).map(c => ({
             id: c.id,
             name: c.name,
-            wasAvailable: c.days.includes(weekday)
+            wasAvailable: c.days.includes(weekday),
+            wasConsecutive: lastOrganistIds.includes(c.id) // Marcar se tocou consecutivamente
         }));
         
         // Atualizar contadores no pool

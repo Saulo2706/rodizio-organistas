@@ -411,15 +411,40 @@ function renderSchedule(schedule, church) {
     
     schedule.forEach(s => {
         const organists = s.chosen.map(c => {
-            const icon = c.wasAvailable 
-                ? '<i class="bi bi-check-circle-fill text-success"></i>' 
-                : '<i class="bi bi-exclamation-triangle-fill text-warning"></i>';
-            return `${icon} ${c.name}`;
+            let icon = '';
+            let badges = [];
+            
+            // Ícone de disponibilidade
+            if (c.wasAvailable) {
+                icon = '<i class="bi bi-check-circle-fill text-success"></i>';
+            } else {
+                icon = '<i class="bi bi-exclamation-triangle-fill text-warning"></i>';
+                badges.push('<small class="badge bg-warning">Fora Preferência</small>');
+            }
+            
+            // Ícone de consecutivo
+            if (c.wasConsecutive) {
+                icon += ' <i class="bi bi-arrow-repeat text-info" title="Tocou no culto anterior"></i>';
+                badges.push('<small class="badge bg-info">Consecutivo</small>');
+            }
+            
+            const badgesHtml = badges.length > 0 ? ' ' + badges.join(' ') : '';
+            return `${icon} ${c.name}${badgesHtml}`;
         }).join('<br>');
         
-        const statusBadge = s.chosen.every(c => c.wasAvailable) 
-            ? '<span class="badge bg-success">OK</span>' 
-            : '<span class="badge bg-warning">Fora da Preferência</span>';
+        // Status geral do culto
+        const hasConsecutive = s.chosen.some(c => c.wasConsecutive);
+        const hasOutOfPreference = s.chosen.some(c => !c.wasAvailable);
+        
+        let statusBadge = '';
+        if (!hasConsecutive && !hasOutOfPreference) {
+            statusBadge = '<span class="badge bg-success">OK</span>';
+        } else {
+            const badges = [];
+            if (hasOutOfPreference) badges.push('<span class="badge bg-warning">Fora Preferência</span>');
+            if (hasConsecutive) badges.push('<span class="badge bg-info">Consecutivo</span>');
+            statusBadge = badges.join(' ');
+        }
         
         html += `
             <tr>
