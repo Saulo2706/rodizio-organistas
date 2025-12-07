@@ -11,7 +11,7 @@ function exportScheduleToExcel(schedule, meta) {
     const dayAbbrev = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']; // Dom, Seg, Ter, Qua, Qui, Sex, Sab
 
     const churchName = (meta && meta.church && meta.church.name) || 'CONGREGAÇÃO CRISTÃ NO BRASIL';
-    const year = new Date(schedule[0] ? .date + 'T00:00:00').getFullYear();
+    const year = new Date(schedule[0]?.date + 'T00:00:00').getFullYear();
 
     // Organizar por organista e mês
     const organistSchedule = {};
@@ -83,8 +83,8 @@ function exportScheduleToExcel(schedule, meta) {
 
     // Santa Ceia - selecionar 2 organistas aleatórias
     const shuffled = [...organistNames].sort(() => Math.random() - 0.5);
-    const santaCeia1 = shuffled[0] ? .toUpperCase() || '';
-    const santaCeia2 = shuffled[1] ? .toUpperCase() || '';
+    const santaCeia1 = shuffled[0]?.toUpperCase() || '';
+    const santaCeia2 = shuffled[1]?.toUpperCase() || '';
 
     data.push(['Santa Ceia', 'Introduções/Meia-hora', 'Organista Principal', '', '', '', '', '', '', '', '', '', '']);
     data.push(['', santaCeia1, santaCeia2, '', '', '', '', '', '', '', '', '', '']);
