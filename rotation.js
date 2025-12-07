@@ -52,20 +52,16 @@ function generateRotation(church, organists, startDateStr, endDateStr, perServic
         const lastService = index > 0 ? schedule[index - 1] : null;
         const lastOrganistIds = lastService ? lastService.chosen.map(c => c.id) : [];
 
-        // Candidatos que preferem esse dia
-        let preferredCandidates = pool.filter(o => o.days.includes(weekday));
+        // TODAS as organistas podem tocar em TODOS os dias de culto
+        // A preferência é apenas para o DIA DE INÍCIO do rodízio
+        let allCandidates = pool.slice();
 
-        // Se não houver organistas suficientes com preferência, considerar todos
-        let allCandidates = preferredCandidates.length >= perService ?
-            preferredCandidates :
-            pool.slice();
-
-        // Ordenar candidatos por critérios de justiça (APENAS nos dias de culto desta igreja):
+        // Ordenar candidatos por critérios de justiça:
         // 0. EVITAR quem tocou no último culto (penalidade forte!)
-        // 1. Contagem neste dia da semana específico - menor primeiro (mais importante!)
+        // 1. Contagem neste dia da semana específico - menor primeiro (PRIORIDADE - para rotacionar entre os dias)
         // 2. Total geral (playCount) - menor primeiro
-        // 3. Se disponível no dia (preferência) - sim primeiro
-        // 4. Randomização para desempate
+        // 3. Se disponível no dia (preferência) - sim primeiro (APENAS para desempate)
+        // 4. Randomização para desempate final
         allCandidates.sort((a, b) => {
             // Critério 0: Penalizar quem tocou no último culto
             const aWasLast = lastOrganistIds.includes(a.id) ? 1000 : 0;
@@ -74,7 +70,7 @@ function generateRotation(church, organists, startDateStr, endDateStr, perServic
                 return aWasLast - bWasLast; // Quem tocou por último vai para o fim
             }
 
-            // Critério 1: Contagem neste dia da semana (PRIORIDADE)
+            // Critério 1: Contagem neste dia da semana (PRIORIDADE - rotaciona entre os dias)
             const aWeekdayCount = a.weekdayCount[weekday] || 0;
             const bWeekdayCount = b.weekdayCount[weekday] || 0;
             if (aWeekdayCount !== bWeekdayCount) {
@@ -86,7 +82,7 @@ function generateRotation(church, organists, startDateStr, endDateStr, perServic
                 return a.playCount - b.playCount;
             }
 
-            // Critério 3: Preferência (disponíveis primeiro)
+            // Critério 3: Preferência (APENAS para desempate, não elimina candidatas)
             const aAvailable = a.days.includes(weekday) ? 1 : 0;
             const bAvailable = b.days.includes(weekday) ? 1 : 0;
             if (aAvailable !== bAvailable) {
