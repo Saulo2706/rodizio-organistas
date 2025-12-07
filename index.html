@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Rodízio de Organistas - Protótipo</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 10px;
+            font-size: 18px;
+            line-height: 1.4
+        }
+        
+        label {
+            display: block;
+            margin-top: 8px
+        }
+        
+        .row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap
+        }
+        
+        .card {
+            border: 1px solid #ddd;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 12px;
+            background: #fff
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px
+        }
+        
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left
+        }
+        
+        button {
+            margin-top: 8px;
+            padding: 8px 10px;
+            font-size: 16px
+        }
+        
+        .small {
+            font-size: 0.9em;
+            color: #555
+        }
+        
+        h1,
+        h3 {
+            margin: 6px 0
+        }
+        
+        input[type="text"],
+        input[type="date"],
+        input[type="number"] {
+            padding: 6px;
+            font-size: 16px;
+            width: 100%;
+            box-sizing: border-box
+        }
+        
+        .footer {
+            margin-top: 16px;
+            color: #666;
+            font-size: 0.9em
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Rodízio de Organistas</h1>
+    <p class="small">Interface simples para criar o rodízio por período e exportar para Excel. Feito para ser fácil para sua mãe usar — posso ajustar tamanho/cores se quiser.</p>
+
+    <div class="card">
+        <h3>Igreja</h3>
+        <label>Nome da igreja: <input id="churchName" type="text" /></label>
+        <label>Dias de culto (marque):</label>
+        <div id="churchDays" class="row"></div>
+        <button id="saveChurch">Salvar Igreja</button>
+    </div>
+
+    <div class="card">
+        <h3>Cadastro de Organista</h3>
+        <label>Nome: <input id="organistName" type="text" /></label>
+        <label>Disponibilidade (dias da semana):</label>
+        <div id="organistDays" class="row"></div>
+        <button id="addOrganist">Adicionar Organista</button>
+        <div id="organistsList" class="small"></div>
+    </div>
+
+    <div class="card">
+        <h3>Gerar Rodízio</h3>
+        <label>Período inicial: <input id="startDate" type="date" /></label>
+        <label>Período final: <input id="endDate" type="date" /></label>
+        <label>Quantas organistas por culto: <input id="perService" type="number" min="1" value="1" /></label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button id="generate">Gerar Rodízio</button>
+            <button id="exportBtn">Exportar Excel</button>
+            <button id="clearData" style="background:#f8d7da">Limpar dados (local)</button>
+        </div>
+        <div id="scheduleArea"></div>
+    </div>
+
+    <div class="footer">
+        Observação: os dados são salvos localmente no navegador (localStorage). Posso integrar com o Firebase/Firestore para salvar online se quiser.
+    </div>
+
+    <!-- SheetJS para gerar .xlsx -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="rotation.js"></script>
+    <script src="app.js"></script>
+    <script src="export.js"></script>
+</body>
+
+</html>
