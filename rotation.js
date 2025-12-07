@@ -18,9 +18,9 @@ function generateRotation(church, organists, startDateStr, endDateStr, perServic
     const schedule = [];
     const pool = clone(organists);
 
-    // Normalizar contadores
+    // Normalizar contadores - SEMPRE começar do zero para cada nova geração
     pool.forEach(p => {
-        p.playCount = Number(p.playCount || 0);
+        p.playCount = 0; // Resetar para 0 - cada geração é independente
         p.monthlyCount = 0; // Contador do mês atual
         p.weekdayCount = {}; // Contador por dia da semana
         church.days.forEach(day => {
