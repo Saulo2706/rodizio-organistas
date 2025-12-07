@@ -12,8 +12,8 @@ function exportScheduleToExcel(schedule, meta) {
 
     // === ABA 1: ESCALA (Formato limpo para impressão) ===
     const churchName = (meta && meta.church && meta.church.name) || 'Igreja';
-    const periodStart = schedule[0] ? .date || '';
-    const periodEnd = schedule[schedule.length - 1] ? .date || '';
+    const periodStart = schedule[0]?.date || '';
+    const periodEnd = schedule[schedule.length - 1]?.date || '';
 
     const scheduleData = [];
 
