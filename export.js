@@ -1,5 +1,5 @@
-// export.js - Exporta schedule como XLSX no padrão de rodízios de igreja
-// Usa SheetJS (incluído via CDN no index.html)
+// export.js - Exporta schedule como XLSX no padrão tradicional de rodízios
+// Formato simples e limpo para impressão
 
 function exportScheduleToExcel(schedule, meta) {
     if (!window.XLSX) {
@@ -7,124 +7,69 @@ function exportScheduleToExcel(schedule, meta) {
         return;
     }
 
-    const dayNames = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
-    const dayNamesShort = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+    const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
+                        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
-    // === ABA 1: ESCALA (Formato limpo para impressão) ===
+    // === FORMATO SIMPLES E TRADICIONAL ===
     const churchName = (meta && meta.church && meta.church.name) || 'Igreja';
-    const periodStart = schedule[0]?.date || '';
-    const periodEnd = schedule[schedule.length - 1]?.date || '';
-
+    const year = new Date().getFullYear();
+    
+    // Descobrir qual mês é o rodízio
+    const firstDate = new Date(schedule[0]?.date + 'T00:00:00');
+    const monthName = monthNames[firstDate.getMonth()];
+    
     const scheduleData = [];
 
-    // Cabeçalho
-    scheduleData.push([`ESCALA DE ORGANISTAS - ${churchName.toUpperCase()}`]);
-    scheduleData.push([`Período: ${formatDateBR(periodStart)} a ${formatDateBR(periodEnd)}`]);
+    // Título centralizado
+    scheduleData.push([`ESCALA DE ORGANISTAS - ${monthName.toUpperCase()} ${year}`]);
+    scheduleData.push([churchName.toUpperCase()]);
     scheduleData.push([]);
 
-    // Tabela principal
-    scheduleData.push(['DATA', 'DIA DA SEMANA', 'ORGANISTA(S)', 'OBSERVAÇÕES']);
+    // Cabeçalho da tabela
+    scheduleData.push(['DATA', 'DIA', 'ORGANISTA']);
 
+    // Dados
     schedule.forEach(s => {
-        const dateFormatted = formatDateBR(s.date);
-        const dayName = dayNames[s.weekday];
-        const organists = s.chosen.map(c => c.name).join(' e ');
+        const date = new Date(s.date + 'T00:00:00');
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const dateStr = `${day}/${month}`;
         
-        // Observações
-        const obs = [];
-        if (s.chosen.some(c => !c.wasAvailable)) {
-            obs.push('Fora da preferência');
-        }
-        if (s.chosen.some(c => c.wasConsecutive)) {
-            obs.push('Consecutivo');
-        }
-        const observations = obs.length > 0 ? obs.join(', ') : '';
+        const dayName = dayNames[s.weekday];
+        const organists = s.chosen.map(c => c.name).join(' / ');
 
-        scheduleData.push([dateFormatted, dayName, organists, observations]);
+        scheduleData.push([dateStr, dayName, organists]);
     });
 
-    const ws_schedule = XLSX.utils.aoa_to_sheet(scheduleData);
+    scheduleData.push([]);
+    scheduleData.push(['', '', '']);
+    scheduleData.push(['Observações:']);
+    scheduleData.push(['- Em caso de imprevistos, comunicar com antecedência']);
 
-    // Ajustar largura das colunas
-    ws_schedule['!cols'] = [
-        { wch: 15 }, // Data
-        { wch: 20 }, // Dia
-        { wch: 40 }, // Organistas
-        { wch: 25 }  // Observações
+    const ws = XLSX.utils.aoa_to_sheet(scheduleData);
+
+    // Larguras das colunas
+    ws['!cols'] = [
+        { wch: 12 },  // Data
+        { wch: 15 },  // Dia
+        { wch: 35 }   // Organista
     ];
 
-    // Mesclar células do cabeçalho
-    ws_schedule['!merges'] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }, // Título
-        { s: { r: 1, c: 0 }, e: { r: 1, c: 3 } }  // Período
+    // Mesclar células do título
+    ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 2 } },  // Título mês/ano
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 2 } }   // Nome igreja
     ];
-
-    // === ABA 2: ESTATÍSTICAS ===
-    const statsData = [];
-
-    if (meta && meta.church) {
-        statsData.push(['ESTATÍSTICAS - ' + meta.church.name]);
-        statsData.push(['Período:', `${formatDateBR(periodStart)} a ${formatDateBR(periodEnd)}`]);
-        statsData.push([]);
-    }
-
-    if (meta && meta.stats) {
-        statsData.push(['RESUMO GERAL']);
-        statsData.push(['Total de Cultos:', meta.stats.totalServices]);
-        statsData.push(['Total de Organistas:', meta.stats.organistCount]);
-        statsData.push(['Média por Organista:', meta.stats.avgPerOrganist.toFixed(1)]);
-        statsData.push(['Desvio Padrão (equilíbrio):', meta.stats.stdDeviation.toFixed(2)]);
-        statsData.push([]);
-
-        // Cabeçalho dinâmico - apenas dias de culto da igreja
-        const churchDays = meta.stats.churchDays || [];
-        const headerRow = ['ORGANISTA', 'TOTAL'];
-        const dayHeaders = [];
-
-        churchDays.forEach(dayNum => {
-            headerRow.push(dayNamesShort[dayNum]);
-            dayHeaders.push(dayNum);
-        });
-
-        statsData.push(['DISTRIBUIÇÃO POR DIA DE CULTO']);
-        statsData.push(headerRow);
-
-        meta.stats.distribution.forEach(d => {
-            const row = [d.name, d.total];
-
-            // Adicionar apenas dias de culto
-            dayHeaders.forEach(dayNum => {
-                row.push(d.byWeekday[dayNum] || 0);
-            });
-
-            statsData.push(row);
-        });
-    }
-
-    const ws_stats = XLSX.utils.aoa_to_sheet(statsData);
-    const colWidths = [{ wch: 25 }, { wch: 12 }];
-    if (meta && meta.stats && meta.stats.churchDays) {
-        meta.stats.churchDays.forEach(() => colWidths.push({ wch: 10 }));
-    }
-    ws_stats['!cols'] = colWidths;
 
     // === CRIAR WORKBOOK ===
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws_schedule, 'Escala');
-    XLSX.utils.book_append_sheet(wb, ws_stats, 'Estatísticas');
+    XLSX.utils.book_append_sheet(wb, ws, monthName);
 
     // === GERAR ARQUIVO ===
-    const date = new Date().toISOString().slice(0, 10);
-    const filename = `Rodizio_${churchName.replace(/\s+/g, '_')}_${date}.xlsx`;
-
+    const filename = `Escala_${churchName.replace(/\s+/g, '_')}_${monthName}_${year}.xlsx`;
+    
     XLSX.writeFile(wb, filename);
-}
-
-// Helper para formatar data em pt-BR
-function formatDateBR(dateStr) {
-    if (!dateStr) return '';
-    const d = new Date(dateStr + 'T00:00:00');
-    return d.toLocaleDateString('pt-BR');
 }
 
 window.exportScheduleToExcel = exportScheduleToExcel;

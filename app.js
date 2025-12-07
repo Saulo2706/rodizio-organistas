@@ -7,8 +7,8 @@ function el(id) { return document.getElementById(id); }
 
 // Estado global
 let state = {
-    churches: [],  // array de igrejas
-    organists: []  // array de organistas (cada uma com churchIds[])
+    churches: [], // array de igrejas
+    organists: [] // array de organistas (cada uma com churchIds[])
 };
 
 // UI inicial - criar checkboxes de dias
@@ -44,14 +44,14 @@ function saveState() {
 document.addEventListener('DOMContentLoaded', function() {
     createDayCheckboxes('churchDays');
     createDayCheckboxes('organistDays');
-    
+
     loadState();
     console.log('Estado carregado:', state); // Debug
-    
+
     updateChurchSelects();
     renderChurchesList();
     renderOrganistsList();
-    
+
     setupEventListeners();
 });
 
@@ -62,7 +62,7 @@ function setupEventListeners() {
         const name = el('churchName').value.trim();
         const color = el('churchColor').value;
         const days = [...el('churchDays').querySelectorAll('input:checked')].map(i => Number(i.value));
-        
+
         if (!name) {
             showAlert('danger', 'Informe o nome da igreja');
             return;
@@ -71,15 +71,15 @@ function setupEventListeners() {
             showAlert('warning', 'Selecione pelo menos um dia de culto');
             return;
         }
-        
+
         const id = 'church_' + Date.now();
         state.churches.push({ id, name, days, color });
         saveState();
-        
+
         el('churchName').value = '';
         el('churchColor').value = '#667eea';
         [...el('churchDays').querySelectorAll('input')].forEach(i => i.checked = false);
-        
+
         updateChurchSelects();
         renderChurchesList();
         showAlert('success', `Igreja "${name}" adicionada com sucesso!`);
@@ -90,7 +90,7 @@ function setupEventListeners() {
         const name = el('organistName').value.trim();
         const churchIds = [...el('organistChurches').selectedOptions].map(opt => opt.value);
         const days = [...el('organistDays').querySelectorAll('input:checked')].map(i => Number(i.value));
-        
+
         if (!name) {
             showAlert('danger', 'Informe o nome da organista');
             return;
@@ -103,14 +103,14 @@ function setupEventListeners() {
             showAlert('warning', 'Selecione pelo menos um dia de preferência');
             return;
         }
-        
+
         const id = 'org_' + Date.now();
         state.organists.push({ id, name, churchIds, days, playCount: 0 });
         saveState();
-        
+
         el('organistName').value = '';
         [...el('organistDays').querySelectorAll('input')].forEach(i => i.checked = false);
-        
+
         renderOrganistsList();
         showAlert('success', `Organista "${name}" adicionada com sucesso!`);
     });
@@ -121,7 +121,7 @@ function setupEventListeners() {
         const start = el('startDate').value;
         const end = el('endDate').value;
         const perService = Number(el('perService').value) || 1;
-        
+
         if (!churchId) {
             showAlert('danger', 'Selecione uma igreja');
             return;
@@ -130,37 +130,37 @@ function setupEventListeners() {
             showAlert('danger', 'Informe o período inicial e final');
             return;
         }
-        
+
         const church = state.churches.find(c => c.id === churchId);
         const churchOrganists = state.organists.filter(o => o.churchIds && o.churchIds.includes(churchId));
-        
+
         if (churchOrganists.length === 0) {
             showAlert('warning', 'Não há organistas vinculadas a esta igreja');
             return;
         }
-        
+
         try {
             const res = generateRotation(church, churchOrganists, start, end, perService);
-            
+
             // Atualizar contadores
             res.updatedCounts.forEach(u => {
                 const org = state.organists.find(o => o.id === u.id);
                 if (org) org.playCount = u.playCount;
             });
-            
+
             saveState();
             renderOrganistsList();
             renderSchedule(res.schedule, church);
             renderStats(res.stats, church);
-            
+
             lastSchedule = res.schedule;
-            lastExportMeta = { 
-                church, 
-                perService, 
+            lastExportMeta = {
+                church,
+                perService,
                 generatedAt: new Date().toISOString(),
                 stats: res.stats
             };
-            
+
             showAlert('success', 'Rodízio gerado com sucesso!');
         } catch (e) {
             showAlert('danger', 'Erro ao gerar rodízio: ' + e.message);
@@ -195,9 +195,9 @@ function renderChurchesList() {
         div.innerHTML = '<div class="alert alert-info alert-custom"><i class="bi bi-info-circle"></i> Nenhuma igreja cadastrada</div>';
         return;
     }
-    
+
     let html = '<h5 class="mt-4 mb-3">Igrejas Cadastradas</h5><div class="table-responsive"><table class="table table-hover"><thead><tr><th>Igreja</th><th>Dias de Culto</th><th>Organistas</th><th>Ações</th></tr></thead><tbody>';
-    
+
     state.churches.forEach(church => {
         const daysText = church.days.map(d => dayNames[d]).join(', ');
         const organistCount = state.organists.filter(o => o.churchIds && o.churchIds.includes(church.id)).length;
@@ -216,10 +216,10 @@ function renderChurchesList() {
             </tr>
         `;
     });
-    
+
     html += '</tbody></table></div>';
     div.innerHTML = html;
-    
+
     [...div.querySelectorAll('.delete-church')].forEach(btn => {
         btn.addEventListener('click', () => deleteChurch(btn.dataset.id));
     });
@@ -228,7 +228,7 @@ function renderChurchesList() {
 function deleteChurch(churchId) {
     const church = state.churches.find(c => c.id === churchId);
     if (!confirm(`Deseja remover a igreja "${church.name}"?`)) return;
-    
+
     state.churches = state.churches.filter(c => c.id !== churchId);
     // remover vínculo das organistas
     state.organists.forEach(o => {
@@ -236,7 +236,7 @@ function deleteChurch(churchId) {
             o.churchIds = o.churchIds.filter(id => id !== churchId);
         }
     });
-    
+
     saveState();
     updateChurchSelects();
     renderChurchesList();
@@ -247,13 +247,13 @@ function deleteChurch(churchId) {
 function updateChurchSelects() {
     // Atualizar select de organistas
     const selectOrg = el('organistChurches');
-    selectOrg.innerHTML = state.churches.length === 0 
-        ? '<option disabled>Cadastre igrejas primeiro</option>'
-        : state.churches.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-    
+    selectOrg.innerHTML = state.churches.length === 0 ?
+        '<option disabled>Cadastre igrejas primeiro</option>' :
+        state.churches.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
     // Atualizar select de geração
     const selectGen = el('selectedChurch');
-    selectGen.innerHTML = '<option value="">Selecione uma igreja</option>' + 
+    selectGen.innerHTML = '<option value="">Selecione uma igreja</option>' +
         state.churches.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
 }
 
@@ -263,17 +263,17 @@ function renderOrganistsList() {
         div.innerHTML = '<div class="alert alert-info alert-custom mt-3"><i class="bi bi-info-circle"></i> Nenhuma organista cadastrada</div>';
         return;
     }
-    
+
     let html = '<h5 class="mt-4 mb-3">Organistas Cadastradas</h5><div class="table-responsive"><table class="table table-hover"><thead><tr><th>Nome</th><th>Igrejas</th><th>Preferências</th><th>Total Tocado</th><th>Ações</th></tr></thead><tbody>';
-    
+
     state.organists.forEach(org => {
         const churches = org.churchIds.map(cId => {
             const church = state.churches.find(c => c.id === cId);
             return church ? `<span class="badge badge-organist" style="background: ${church.color}">${church.name}</span>` : '';
         }).join(' ');
-        
+
         const daysText = org.days.map(d => dayNames[d]).join(', ');
-        
+
         html += `
             <tr>
                 <td><strong>${org.name}</strong></td>
@@ -288,10 +288,10 @@ function renderOrganistsList() {
             </tr>
         `;
     });
-    
+
     html += '</tbody></table></div>';
     div.innerHTML = html;
-    
+
     [...div.querySelectorAll('.delete-organist')].forEach(btn => {
         btn.addEventListener('click', () => deleteOrganist(btn.dataset.id));
     });
@@ -300,7 +300,7 @@ function renderOrganistsList() {
 function deleteOrganist(orgId) {
     const org = state.organists.find(o => o.id === orgId);
     if (!confirm(`Deseja remover "${org.name}"?`)) return;
-    
+
     state.organists = state.organists.filter(o => o.id !== orgId);
     saveState();
     renderOrganistsList();
@@ -311,9 +311,9 @@ function deleteOrganist(orgId) {
 function renderStats(stats, church) {
     const area = el('statsArea');
     if (!stats) return;
-    
+
     let html = '<h5 class="mb-3">Estatísticas do Rodízio</h5><div class="row">';
-    
+
     html += `
         <div class="col-md-3">
             <div class="stats-card">
@@ -340,7 +340,7 @@ function renderStats(stats, church) {
             </div>
         </div>
     `;
-    
+
     html += '</div>';
     area.innerHTML = html;
 }
@@ -351,14 +351,14 @@ function renderSchedule(schedule, church) {
         area.innerHTML = '<div class="alert alert-warning alert-custom">Nenhum culto encontrado no período selecionado</div>';
         return;
     }
-    
+
     let html = '<h5 class="mb-3 mt-4">Escala Gerada</h5><div class="table-responsive"><table class="table table-striped table-hover"><thead><tr><th>Data</th><th>Dia da Semana</th><th>Organistas</th><th>Status</th></tr></thead><tbody>';
-    
+
     schedule.forEach(s => {
         const organists = s.chosen.map(c => {
             let icon = '';
             let badges = [];
-            
+
             // Ícone de disponibilidade
             if (c.wasAvailable) {
                 icon = '<i class="bi bi-check-circle-fill text-success"></i>';
@@ -366,21 +366,21 @@ function renderSchedule(schedule, church) {
                 icon = '<i class="bi bi-exclamation-triangle-fill text-warning"></i>';
                 badges.push('<small class="badge bg-warning">Fora Preferência</small>');
             }
-            
+
             // Ícone de consecutivo
             if (c.wasConsecutive) {
                 icon += ' <i class="bi bi-arrow-repeat text-info" title="Tocou no culto anterior"></i>';
                 badges.push('<small class="badge bg-info">Consecutivo</small>');
             }
-            
+
             const badgesHtml = badges.length > 0 ? ' ' + badges.join(' ') : '';
             return `${icon} ${c.name}${badgesHtml}`;
         }).join('<br>');
-        
+
         // Status geral do culto
         const hasConsecutive = s.chosen.some(c => c.wasConsecutive);
         const hasOutOfPreference = s.chosen.some(c => !c.wasAvailable);
-        
+
         let statusBadge = '';
         if (!hasConsecutive && !hasOutOfPreference) {
             statusBadge = '<span class="badge bg-success">OK</span>';
@@ -390,7 +390,7 @@ function renderSchedule(schedule, church) {
             if (hasConsecutive) badges.push('<span class="badge bg-info">Consecutivo</span>');
             statusBadge = badges.join(' ');
         }
-        
+
         html += `
             <tr>
                 <td><strong>${formatDate(s.date)}</strong></td>
@@ -400,7 +400,7 @@ function renderSchedule(schedule, church) {
             </tr>
         `;
     });
-    
+
     html += '</tbody></table></div>';
     area.innerHTML = html;
 }
@@ -420,7 +420,7 @@ function showAlert(type, message) {
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
     document.body.appendChild(alertDiv);
-    
+
     setTimeout(() => {
         alertDiv.remove();
     }, 4000);
