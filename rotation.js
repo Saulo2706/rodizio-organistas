@@ -53,43 +53,38 @@ function generateRotation(church, organists, startDateStr, endDateStr, perServic
         const lastOrganistIds = lastService ? lastService.chosen.map(c => c.id) : [];
 
         // TODAS as organistas podem tocar em TODOS os dias de culto
-        // A preferência é apenas para o DIA DE INÍCIO do rodízio
         let allCandidates = pool.slice();
 
         // Ordenar candidatos por critérios de justiça:
-        // 0. EVITAR quem tocou no último culto (penalidade forte!)
-        // 1. Total geral (playCount) - menor primeiro (PRIORIDADE para distribuição equilibrada)
-        // 2. Contagem neste dia da semana específico - menor primeiro (para rotacionar entre os dias)
-        // 3. Se disponível no dia (preferência) - sim primeiro (APENAS para desempate)
-        // 4. Randomização para desempate final
+        // PRIORIDADE ABSOLUTA: Total geral equilibrado
         allCandidates.sort((a, b) => {
-            // Critério 0: Penalizar quem tocou no último culto
-            const aWasLast = lastOrganistIds.includes(a.id) ? 1000 : 0;
-            const bWasLast = lastOrganistIds.includes(b.id) ? 1000 : 0;
-            if (aWasLast !== bWasLast) {
-                return aWasLast - bWasLast; // Quem tocou por último vai para o fim
-            }
-
-            // Critério 1: Total geral (PRIORIDADE - quem tocou menos no geral)
+            // Critério 1: Total geral (PRIORIDADE MÁXIMA - distribuição equilibrada)
             if (a.playCount !== b.playCount) {
                 return a.playCount - b.playCount;
             }
 
-            // Critério 2: Contagem neste dia da semana (para rotacionar entre os dias)
+            // Critério 2: Evitar quem tocou no último culto (mas só como desempate)
+            const aWasLast = lastOrganistIds.includes(a.id) ? 1 : 0;
+            const bWasLast = lastOrganistIds.includes(b.id) ? 1 : 0;
+            if (aWasLast !== bWasLast) {
+                return aWasLast - bWasLast;
+            }
+
+            // Critério 3: Contagem neste dia da semana (para rotacionar entre os dias)
             const aWeekdayCount = a.weekdayCount[weekday] || 0;
             const bWeekdayCount = b.weekdayCount[weekday] || 0;
             if (aWeekdayCount !== bWeekdayCount) {
                 return aWeekdayCount - bWeekdayCount;
             }
 
-            // Critério 3: Preferência (APENAS para desempate, não elimina candidatas)
+            // Critério 4: Preferência (APENAS para desempate)
             const aAvailable = a.days.includes(weekday) ? 1 : 0;
             const bAvailable = b.days.includes(weekday) ? 1 : 0;
             if (aAvailable !== bAvailable) {
-                return bAvailable - aAvailable; // Inverte para disponível vir primeiro
+                return bAvailable - aAvailable;
             }
 
-            // Critério 4: Random para desempate
+            // Critério 5: Random para desempate final
             return Math.random() - 0.5;
         });
 
